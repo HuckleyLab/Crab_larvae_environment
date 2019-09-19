@@ -2,13 +2,17 @@ library(cmsaf)
 library(ncdf4)
 library(fields)
 library(colorRamps)
+library(sp)
+library(rgdal)
+library(raster)
 
 my.colors = colorRampPalette(c("#5E85B8","#EDF0C0","#C13127"))#colors to use in graphs
 
 #-----------
 #LOAD DATA
 
-setwd("C:/Users/Murilo/Desktop/Future predictions CMIP5/RCP 4.5")
+setwd("E:/Abiotic dataset/SST/future predictions/RCP 4.5")
+dir()
 
 setwd("/Volumes/GoogleDrive/Shared Drives/TrEnCh/Projects/Murilo/SST future predictions/ACESS1.3 RCP4.5/")
 Acess_2016_2025=nc_open("tos_day_ACCESS1-3_rcp45_r1i1p1_20160101-20251231.nc")
@@ -22,6 +26,21 @@ setwd("/Volumes/GoogleDrive/Shared Drives/TrEnCh/Projects/Murilo/SST future pred
 cnrm_2016_2025=nc_open("tos_day_CNRM-CM5_rcp45_r1i1p1_20160101-20251231.nc")
 print(cnrm_2016_2025)
 
+setwd("E:/Abiotic dataset/SST/future predictions/RCP 8.5")
+dir()
+
+setwd("/Volumes/GoogleDrive/Shared Drives/TrEnCh/Projects/Murilo/SST future predictions/ACESS1.3 RCP8.5/")
+Acess_2016_2025_8.5=nc_open("tos_day_ACCESS1-3_rcp85_r1i1p1_20160101-20251231.nc")
+print(Acess_2016_2025_8.5)
+
+setwd("/Volumes/GoogleDrive/Shared Drives/TrEnCh/Projects/Murilo/SST future predictions/MRI-CGCM3 RCP8.5/")
+mri_2016_2025_8.5=nc_open("tos_day_MRI-CGCM3_rcp85_r1i1p1_20160101-20251231.nc")
+print(mri_2016_2025_8.5)
+
+setwd("/Volumes/GoogleDrive/Shared Drives/TrEnCh/Projects/Murilo/SST future predictions/CNRM-CM5 RCP8.5/")
+cnrm_2016_2025_8.5=nc_open("tos_day_CNRM-CM5_rcp85_r1i1p1_20160101-20251231.nc")
+print(cnrm_2016_2025_8.5)
+
 #------------
 #Acess
 
@@ -32,16 +51,14 @@ dim(sea_surface)
 sea_surface = sea_surface - 273.15# convert units from kelvin to celcius
 lons= ncvar_get(Acess_2016_2025,"lon") #get info about long
 lons= lons[,1]
-dim(lons)
 lats= ncvar_get(Acess_2016_2025,"lat") #get info about latitude
-dim(lats)
 lats= lats[1,]
 times= ncvar_get(Acess_2016_2025,"time") #get info about time
 dim(times)
 times1= as.Date(times, origin="0001-01-01")#convert to Julian date, since 0001-01-01
 times1
 
-#estimate years and doys
+#estimate years and days
 years=as.numeric(format(times1,"%Y"))
 doys= as.numeric(format(times1,"%j"))
 
@@ -49,15 +66,15 @@ doys= as.numeric(format(times1,"%j"))
 convert.lon= function(r0) ifelse(r0 > 180, -360 + r0, r0)
 lons= convert.lon(lons)
 
-#subset data to area of interest ##FIX
-lats.sel= which(lats> (-30) &lats<(20))#specific area of interest in atlantic ocean
-lons.sel= which(lons>(-60)&lons<(-25))#specific area of interest in atlantic ocean
+#subset data to area of interest ##
+lats.sel= which(lats> (-35) &lats<(30))#specific area of interest in atlantic ocean
+lons.sel= which(lons>(-100)&lons<(-33))#specific area of interest in atlantic ocean
 surface_temp=sea_surface[lons.sel,lats.sel,] #using the specified area
 dim(surface_temp)
 
 #---
 #for each latitude, delete values before NA
-for(lat.id in 1:50){
+for(lat.id in 1:125){
   na1=which.max(is.na(surface_temp[,lat.id,]))
   surface_temp[1:na1,lat.id,]<-NA
 }
@@ -79,29 +96,80 @@ lons= lons[lons.sel]
 lats= lats[lats.sel]
 
 #plot
-image.plot(lons,lats,surface_temp[,,1700],col=my.colors(1000))
+escala<-(c(16,18,20,22,24,26,28,30,32))
+image.plot(lons,lats,surface_temp[,,1700],col=my.colors(1000), axis.args=list(at=escala, labels=names(escala)))
+
 
 #----------
 #MRI
 
-#extract variables tos,lon,lat and time
+#extract variables tos,lon,lat and time#need to fix
 sea_surface.mri=ncvar_get(mri_2016_2025,"tos")#get infor bout SST
 print(sea_surface.mri)
 dim(sea_surface.mri)
+sea_surface.mri=replace(sea_surface.mri,sea_surface.mri<1,NA)#replace 0 values from continent areas by NA
 sea_surface.mri = sea_surface.mri - 273.15# convert units from kelvin to celcius
-lons.mri= ncvar_get(mri_2016_2025,"rlat") #get info about long
+lons.mri= ncvar_get(mri_2016_2025,"lon") #get info about long
+lons.mri= lons.mri[,1]
 dim(lons.mri)
-lats.mri= ncvar_get(mri_2016_2025,"rlon") #get info about latitude
+lats.mri= ncvar_get(mri_2016_2025,"lat") #get info about latitude
+lats.mri= lats.mri[1,]
 dim(lats.mri)
 times.mri= ncvar_get(mri_2016_2025,"time") #get info about time
 dim(times.mri)
 times1.mri= as.Date(times.mri, origin="1850-01-01")#convert to Julian date, since 0001-01-01
 times1.mri
-### NEED TO ROTATE GRID
 
-#estimate years and doys
+#check dimensions world plot
+escala<-(c(0,2,4,6,16,18,20,22,24,26,28,30,32))
+image.plot(sea_surface.mri[,,17],col=my.colors(1000), axis.args=list(at=escala, labels=names(escala)))
+
+# ROTATE GRID####need to fix
+#Acess_stack=stack("tos_day_ACCESS1-3_rcp45_r1i1p1_20160101-20251231.nc")
+#extent(Acess_stack)
+
+#nsat<- stack ("tos_day_MRI-CGCM3_rcp45_r1i1p1_20160101-20251231.nc")
+#extent(nsat)##check the extent## this will be in the form 0-360 degrees
+
+#nsat1<-rotate(nsat)#change the coordinates
+#extent(nsat1)#check result:##this should be in the format: -180/180
+
+#convert longituide
+lons.mri= convert.lon(lons.mri)
+
+#estimate years and days
 years.mri=as.numeric(format(times1.mri,"%Y"))
 doys.mri= as.numeric(format(times1.mri,"%j"))
+
+#----------
+#FIND MRI VALUES THAT CORRESPOND TO ACESS GRID# (lats.mri>(-29)&lats.mri<(28)-lons.mri>(179)&lons.mri<(249))
+sst= surface_temp
+
+#make arrays for mri output
+sst.mri= array(NA, dim= dim(surface_temp))
+
+#match times
+match.times2= match(times1, times1.mri)
+
+#matching function
+findit = function(x,vec){ 
+  y = abs(vec - x) 
+  if(all(is.na(y)))NA else which.min(y) }
+
+#find closest lats and lons
+match.lats2= sapply(lats,findit,lats.mri) 
+match.lons2= sapply(lons,findit,lons.mri)
+
+sst.mri= sea_surface.mri[match.lons2, match.lats2, match.times2]
+
+#for each latitude, delete values before NA
+for(lat.id in 1:125){
+  na1=which.max(is.na(sst.mri[,lat.id,]))
+  sst.mri[1:na1,lat.id,]<-NA
+}
+
+#plot
+image.plot(lons,lats,sst.mri[,,17],col=my.colors(1000))
 
 #----------
 #CNRM
@@ -130,7 +198,7 @@ years.cnrm=as.numeric(format(times1.cnrm,"%Y"))
 doys.cnrm= as.numeric(format(times1.cnrm,"%j"))
 
 #----------
-#FIND CNRM VALUES THAT CORRESPOND TO ACESS GRID
+#FIND CNRM VALUES THAT CORRESPOND TO ACESS GRID (lats.cnrm>(90)&lats.cnrm<(204)-lons.cnrm>(188)&lons.cnrm<(258))
 sst= surface_temp
 
 #make arrays for mri output
@@ -139,16 +207,17 @@ sst.cnrm= array(NA, dim= dim(surface_temp))
 #match times
 match.times= match(times1, times1.cnrm)
 
-#matching function
-findit = function(x,vec){ 
-y = abs(vec - x) 
-if(all(is.na(y)))NA else which.min(y) } 
-
 #find closest lats and lons
 match.lats= sapply(lats,findit,lats.cnrm) 
 match.lons= sapply(lons,findit,lons.cnrm) 
 
 sst.cnrm= sea_surface.cnrm[match.lons, match.lats, match.times]
+
+#for each latitude, delete values before NA
+for(lat.id in 1:125){
+  na1=which.max(is.na(sst.cnrm[,lat.id,]))
+  sst.cnrm[1:na1,lat.id,]<-NA
+}
 
 #plot
 image.plot(lons,lats,sst.cnrm[,,1700],col=my.colors(1000))
