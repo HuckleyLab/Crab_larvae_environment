@@ -194,10 +194,10 @@ for(lon.k in 1:length(lons)){ #loop through longitude
           
           #estimate survival until reaching G
           #mean temp
-          if(dev.ind>1){#if complex development
-            temps= mean(surface_temp[lon.k,lat.k,inds.seas[time.k]:inds.seas[dev.ind]])
+          if(dev.ind>1){#if complete development
+            temps= mean(surface_temp[lon.k,lat.k,inds.seas[time.k]:inds.seas[dev.ind+time.k]])
             #estimate survival
-            surv.out[lon.k,lat.k,time.k,yr.k]= survi.function(dev.ind-time.k, temps)
+            surv.out[lon.k,lat.k,time.k,yr.k]= survi.function(dev.ind, temps)
           } #end check complete development
         } #end loop timing
       } #end loop seasons
